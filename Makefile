@@ -1,5 +1,4 @@
-BENCHMARK_SCRIPT=runner.sh
-
+BENCHMARK_SCRIPT=run.sh
 
 MARIADB_VERSION := $(shell $(MARIADB_HOME)/bin/mariadb --version | grep -Po "\K10.\d+[^,]+")
 
@@ -10,7 +9,6 @@ run_benchmark: export BVAR_WAIT_USEC=$(WAIT_USEC)
 run_benchmark: export BVAR_N_QUERIES=$(N_QUERIES)
 run_benchmark: export BVAR_RUN_ID=$(RUN_ID)
 run_benchmark: export BVAR_MARIADB_VERSION=$(MARIADB_VERSION)
-
 run_benchmark:
 	@echo {run_id:$(RUN_ID), innodb_flush:$(INNODB_FLUSH_LOG), sync_binlog:$(SYNC_BINLOG), wait_count:$(WAIT_COUNT), wait_usec:$(WAIT_USEC), n_queries:$(N_QUERIES), version:"$(MARIADB_VERSION)"}
 	./$(BENCHMARK_SCRIPT) $(N_CONNECTIONS)
@@ -45,3 +43,5 @@ run_benchmark_full:
 	@$(MAKE) RUN_ID=1 run_nqueries
 	@$(MAKE) RUN_ID=2 run_nqueries
 
+graph:
+	Rscript graph_results.R

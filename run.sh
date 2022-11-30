@@ -1,4 +1,21 @@
 #!/bin/bash
+#
+# Runs a single benchmark.
+#
+# Easiest to invoke using the Makefile, which automates benchmarking different
+# test parameters and aggregating their results together.
+#
+# If invoking manually, ensure to set a number of environment variables
+# before calling:
+#   MARIADB_HOME: Install directory of MariaDB
+#   BVAR_MARIADB_VERSION: The version of MariaDB being tested
+#   BVAR_INNODB_FLUSH_LOG: innodb_flush_log_at_trx_commit mariadbd option value
+#   BVAR_SYNC_BINLOG: sync_binlog mariadbd option value
+#   BVAR_WAIT_COUNT: binlog_commit_wait_count mariadbd option value
+#   BVAR_WAIT_USEC: binlog_commit_wait_usec mariadbd option value
+#   BVAR_N_QUERIES: Number-of-queries option to mariadb-slap
+#   BVAR_RUN_ID: Unique identifier to provide in the CSV output file
+#
 
 if [ $# -lt 1 ]
 then
