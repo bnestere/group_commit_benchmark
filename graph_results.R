@@ -5,14 +5,17 @@ library("stringr")
 
 dat <- read.csv("flush_benchmark.csv") %>%
   mutate(flush_mode = case_when(
+                                log_bin == 0 ~ "skip-log-bin",
                                 sync_binlog == 1 & innodb_flush_log_at_trx_commit == 0 ~ "<b=1,i=0>",
-                                sync_binlog == 0 & innodb_flush_log_at_trx_commit == 1 ~ "<b=0, i=1>",
+                                sync_binlog == 0 & innodb_flush_log_at_trx_commit == 1 ~ "<b=0,i=1>",
                                 TRUE ~ "<b=1,i=1>"
                                 )) %>%
   mutate(TPS=n_queries/average_time_to_run_queries) %>%
   group_by(version,flush_mode,connection_count,binlog_commit_wait_count,binlog_commit_wait_usec,n_queries) %>%
   summarize(mean_tps=mean(TPS),sd_tps=sd(TPS)) %>%
   ungroup()
+
+dat$flush_mode <- factor(dat$flush_mode, levels=c("skip-log-bin","<b=0,i=1>","<b=1,i=0>","<b=1,i=1>"))
 
 
 title_txt <- str_glue('Group Commit and Sync Benchmark ({dat$version[[1]]})')
