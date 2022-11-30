@@ -5,6 +5,7 @@ MARIADB_VERSION := $(shell $(MARIADB_HOME)/bin/mariadb --version | grep -Po "\K1
 
 run_benchmark: export BVAR_INNODB_FLUSH_LOG=$(INNODB_FLUSH_LOG)
 run_benchmark: export BVAR_SYNC_BINLOG=$(SYNC_BINLOG)
+run_benchmark: export BVAR_LOG_BIN=$(LOG_BIN)
 run_benchmark: export BVAR_WAIT_COUNT=$(WAIT_COUNT)
 run_benchmark: export BVAR_WAIT_USEC=$(WAIT_USEC)
 run_benchmark: export BVAR_N_QUERIES=$(N_QUERIES)
@@ -20,9 +21,10 @@ run_n_connections:
 	@$(MAKE) N_CONNECTIONS=64
 
 run_sync_opts:
-	@$(MAKE) INNODB_FLUSH_LOG=1 SYNC_BINLOG=0 run_n_connections
-	@$(MAKE) INNODB_FLUSH_LOG=0 SYNC_BINLOG=1 run_n_connections
-	@$(MAKE) INNODB_FLUSH_LOG=1 SYNC_BINLOG=1 run_n_connections
+	@$(MAKE) LOG_BIN=1 INNODB_FLUSH_LOG=1 SYNC_BINLOG=0 run_n_connections
+	@$(MAKE) LOG_BIN=1 INNODB_FLUSH_LOG=0 SYNC_BINLOG=1 run_n_connections
+	@$(MAKE) LOG_BIN=1 INNODB_FLUSH_LOG=1 SYNC_BINLOG=1 run_n_connections
+	@$(MAKE) LOG_BIN=0 INNODB_FLUSH_LOG=0 SYNC_BINLOG=0 run_n_connections
 
 run_wait_counts:
 	@$(MAKE) WAIT_COUNT=2 run_sync_opts

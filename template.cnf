@@ -1,5 +1,4 @@
 [mysqld]
-log-bin
 server_id=1
 gtid-domain-id=1
 log-basename=master

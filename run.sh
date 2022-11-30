@@ -11,6 +11,7 @@
 #   BVAR_MARIADB_VERSION: The version of MariaDB being tested
 #   BVAR_INNODB_FLUSH_LOG: innodb_flush_log_at_trx_commit mariadbd option value
 #   BVAR_SYNC_BINLOG: sync_binlog mariadbd option value
+#   BVAR_LOG_BIN: log_bin mariadbd option value
 #   BVAR_WAIT_COUNT: binlog_commit_wait_count mariadbd option value
 #   BVAR_WAIT_USEC: binlog_commit_wait_usec mariadbd option value
 #   BVAR_N_QUERIES: Number-of-queries option to mariadb-slap
@@ -68,6 +69,12 @@ then
   exit 1
 fi
 
+if [[ -z "${BVAR_LOG_BIN}" ]];
+then
+  echo "Environment variable BVAR_LOG_BIN must be set"
+  exit 1
+fi
+
 if [[ -z "${BVAR_RUN_ID}" ]];
 then
   echo "Environment variable BVAR_RUN_ID must be set"
@@ -86,6 +93,7 @@ SOCKET=$RUN_DIR/mysql.sock
 
 cp $SCRIPT_DIR/template.cnf $CFG_FILE
 echo "datadir=$DATA_DIR" >> $CFG_FILE
+echo "log-bin=$BVAR_LOG_BIN" >> $CFG_FILE
 echo "innodb_flush_log_at_trx_commit=$BVAR_INNODB_FLUSH_LOG" >> $CFG_FILE
 echo "sync_binlog=$BVAR_SYNC_BINLOG" >> $CFG_FILE
 echo "binlog_commit_wait_count=$BVAR_WAIT_COUNT" >> $CFG_FILE
@@ -105,7 +113,7 @@ safe_exit() {
 trap safe_exit SIGINT
 
 if [ ! -f "$AGGREGATE_RESULT_FILE" ]; then
-  echo "version,run_id,connection_count,connection_no,innodb_flush_log_at_trx_commit,sync_binlog,binlog_commit_wait_count,binlog_commit_wait_usec,n_queries,engine,benchmark_type,average_time_to_run_queries,min_time_to_run_queries,max_time_to_run_queries,clients_running_queries,queries_per_client" > $AGGREGATE_RESULT_FILE
+  echo "version,run_id,connection_count,connection_no,innodb_flush_log_at_trx_commit,sync_binlog,log_bin,binlog_commit_wait_count,binlog_commit_wait_usec,n_queries,engine,benchmark_type,average_time_to_run_queries,min_time_to_run_queries,max_time_to_run_queries,clients_running_queries,queries_per_client" > $AGGREGATE_RESULT_FILE
 fi
 
 start_server() {
@@ -123,7 +131,7 @@ do_update() {
 
   while IFS="," read -r engine mode avg min max nclients queries_per_client
   do
-    echo "$BVAR_MARIADB_VERSION,$BVAR_RUN_ID,$connection_count,$1,$BVAR_INNODB_FLUSH_LOG,$BVAR_SYNC_BINLOG,$BVAR_WAIT_COUNT,$BVAR_WAIT_USEC,$BVAR_N_QUERIES,$engine,update,$avg,$min,$max,$nclients,$queries_per_client" >> $AGGREGATE_RESULT_FILE
+    echo "$BVAR_MARIADB_VERSION,$BVAR_RUN_ID,$connection_count,$1,$BVAR_INNODB_FLUSH_LOG,$BVAR_SYNC_BINLOG,$BVAR_LOG_BIN,$BVAR_WAIT_COUNT,$BVAR_WAIT_USEC,$BVAR_N_QUERIES,$engine,update,$avg,$min,$max,$nclients,$queries_per_client" >> $AGGREGATE_RESULT_FILE
   done < $result_file
 
 }
@@ -142,7 +150,7 @@ echo "Creating tables.."
 $MARIADB_HOME/bin/mariadb --defaults-file="$CFG_FILE"  -e "CREATE DATABASE IF NOT EXISTS $DATABASE"
 for (( c=1; c<=$1; c++ ))
 do 
-  $MARIADB_HOME/bin/mariadb --defaults-file="$CFG_FILE"  -e "CREATE TABLE ${DATABASE}.t$c (a int, b int) engine=innodb;insert into ${DATABASE}.t$c (a, b) values (1, 1);"
+  $MARIADB_HOME/bin/mariadb --defaults-file="$CFG_FILE"  -e "CREATE TABLE ${DATABASE}.t$c (a int primary key, b int) engine=innodb;insert into ${DATABASE}.t$c (a, b) values (1, 1);"
 done
 
 for (( c=1; c<=$1; c++ ))
