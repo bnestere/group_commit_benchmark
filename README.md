@@ -15,6 +15,9 @@ To run the benchmarks, run
 make run_benchmark_full
 ```
 
+To modify the parameters to benchmark, edit the Makefile
+
+
 To graph the results, you'll need an install of R along with the
 following packages installed:
  * tidyverse

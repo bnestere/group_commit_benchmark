@@ -74,20 +74,39 @@ then
   exit 1
 fi
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+CFG_FILE=$SCRIPT_DIR/benchmark.cnf
+AGGREGATE_RESULT_FILE=$SCRIPT_DIR/flush_benchmark.csv
 DATABASE="bench"
-RESULT_DIR=results
-RUN_DIR=~/run/mariadb
-DATA_DIR=$RUN_DIR/data
+RUN_DIR=$SCRIPT_DIR/run
+RESULT_DIR=$RUN_DIR/results
+DATA_DIR=$RUN_DIR/var/mariadbd.1/data
+SOCKET=$RUN_DIR/mysql.sock
 
-CFG_FILE=benchmark.cnf
+cp $SCRIPT_DIR/template.cnf $CFG_FILE
+echo "datadir=$DATA_DIR" >> $CFG_FILE
+echo "innodb_flush_log_at_trx_commit=$BVAR_INNODB_FLUSH_LOG" >> $CFG_FILE
+echo "sync_binlog=$BVAR_SYNC_BINLOG" >> $CFG_FILE
+echo "binlog_commit_wait_count=$BVAR_WAIT_COUNT" >> $CFG_FILE
+echo "binlog_commit_wait_usec=$BVAR_WAIT_USEC" >> $CFG_FILE
+echo "" >> $CFG_FILE
+echo "[client-server]" >> $CFG_FILE
+echo "socket=$SOCKET" >> $CFG_FILE
 
-AGGREGATE_RESULT_FILE="flush_benchmark.csv"
+rm -rf $RUN_DIR
+mkdir -p $RESULT_DIR
+mkdir -p $DATA_DIR
+
+safe_exit() {
+  echo "Force shutting down MariaDB Server.."
+  $MARIADB_HOME/bin/mariadb --defaults-file="$CFG_FILE"  -e "SHUTDOWN"
+}
+trap safe_exit SIGINT
+
 if [ ! -f "$AGGREGATE_RESULT_FILE" ]; then
   echo "version,run_id,connection_count,connection_no,innodb_flush_log_at_trx_commit,sync_binlog,binlog_commit_wait_count,binlog_commit_wait_usec,n_queries,engine,benchmark_type,average_time_to_run_queries,min_time_to_run_queries,max_time_to_run_queries,clients_running_queries,queries_per_client" > $AGGREGATE_RESULT_FILE
 fi
-
-rm -rf $RESULT_DIR
-mkdir -p $RESULT_DIR
 
 start_server() {
   echo "Starting Server.."
@@ -100,7 +119,7 @@ do_update() {
   table_id=$1
   result_file="$RESULT_DIR/out.t${table_id}.csv"
   echo "Slapping table ${DATABASE}.t$table_id"
-  $MARIADB_HOME/bin/mysqlslap --defaults-file=$CFG_FILE --query="update ${DATABASE}.t$table_id set b=b+1 where a=1" --engine="innodb" --csv="$result_file" --delimiter=";" --concurrency=1 --number-of-queries=$BVAR_N_QUERIES --create-schema="$DATABASE"
+  $MARIADB_HOME/bin/mysqlslap --defaults-file=$CFG_FILE  --query="update ${DATABASE}.t$table_id set b=b+1 where a=1" --engine="innodb" --csv="$result_file" --delimiter=";" --concurrency=1 --number-of-queries=$BVAR_N_QUERIES --create-schema="$DATABASE"
 
   while IFS="," read -r engine mode avg min max nclients queries_per_client
   do
@@ -109,17 +128,8 @@ do_update() {
 
 }
 
-cp template.cnf $CFG_FILE
-
-echo "datadir=$DATA_DIR" >> $CFG_FILE
-echo "innodb_flush_log_at_trx_commit=$BVAR_INNODB_FLUSH_LOG" >> $CFG_FILE
-echo "sync_binlog=$BVAR_SYNC_BINLOG" >> $CFG_FILE
-echo "binlog_commit_wait_count=$BVAR_WAIT_COUNT" >> $CFG_FILE
-echo "binlog_commit_wait_usec=$BVAR_WAIT_USEC" >> $CFG_FILE
 
 echo "Initializing mariadbd.."
-rm -rf $RUN_DIR
-mkdir -p $RUN_DIR
 $MARIADB_HOME/scripts/mysql_install_db --basedir=$MARIADB_HOME --datadir=$DATA_DIR --defaults-file=$CFG_FILE
 
 echo "Starting mariadbd.."
@@ -129,10 +139,10 @@ sleep 1
 echo "..Started"
 
 echo "Creating tables.."
-$MARIADB_HOME/bin/mariadb --socket=/tmp/mysql.sock -e "CREATE DATABASE IF NOT EXISTS $DATABASE"
+$MARIADB_HOME/bin/mariadb --defaults-file="$CFG_FILE"  -e "CREATE DATABASE IF NOT EXISTS $DATABASE"
 for (( c=1; c<=$1; c++ ))
 do 
-  $MARIADB_HOME/bin/mariadb --socket=/tmp/mysql.sock -e "CREATE TABLE ${DATABASE}.t$c (a int, b int) engine=innodb;insert into ${DATABASE}.t$c (a, b) values (1, 1);"
+  $MARIADB_HOME/bin/mariadb --defaults-file="$CFG_FILE"  -e "CREATE TABLE ${DATABASE}.t$c (a int, b int) engine=innodb;insert into ${DATABASE}.t$c (a, b) values (1, 1);"
 done
 
 for (( c=1; c<=$1; c++ ))
@@ -152,7 +162,7 @@ do
 done
 
 echo "Updates complete, shutting down server"
-$MARIADB_HOME/bin/mariadb --socket=/tmp/mysql.sock -e "SHUTDOWN"
+$MARIADB_HOME/bin/mariadb --defaults-file="$CFG_FILE"  -e "SHUTDOWN"
 
 wait $SERVER_PID
 

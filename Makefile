@@ -2,6 +2,7 @@ BENCHMARK_SCRIPT=run.sh
 
 MARIADB_VERSION := $(shell $(MARIADB_HOME)/bin/mariadb --version | grep -Po "\K10.\d+[^,]+")
 
+
 run_benchmark: export BVAR_INNODB_FLUSH_LOG=$(INNODB_FLUSH_LOG)
 run_benchmark: export BVAR_SYNC_BINLOG=$(SYNC_BINLOG)
 run_benchmark: export BVAR_WAIT_COUNT=$(WAIT_COUNT)
@@ -39,9 +40,13 @@ run_wait_usecs:
 run_nqueries:
 	@$(MAKE) N_QUERIES=1000 run_wait_usecs
 
-run_benchmark_full:
+run_benchmark_full: clean
 	@$(MAKE) RUN_ID=1 run_nqueries
 	@$(MAKE) RUN_ID=2 run_nqueries
 
 graph:
 	Rscript graph_results.R
+
+clean:
+	rm -f flush_benchmark.csv
+	rm -rf run

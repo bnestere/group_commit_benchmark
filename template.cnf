@@ -5,4 +5,3 @@ gtid-domain-id=1
 log-basename=master
 port=3306
 binlog-format=row
-socket=/tmp/mysql.sock
